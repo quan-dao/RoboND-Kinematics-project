@@ -68,7 +68,6 @@ def put_in_mp_pi(angle):
         angle -= 2 * pi
     elif angle < -pi:
         angle += 2 *  pi
-
     return angle.evalf()
 
 # Create symbols
@@ -87,21 +86,21 @@ s = {alpha0:    0,        a0:    0,         d1:    0.75,
      alpha6:    0,        a6:    0,         d7:    0.303,     q7:   0}
 
 # Symbolically calculate homogeneous transformation matrix
-T_0_G = Matrix([[1, 0, 0, 0],
+symT_0_G = Matrix([[1, 0, 0, 0],
                 [0, 1, 0, 0],
                 [0, 0, 1, 0],
                 [0, 0, 0, 1]])  # initialize homogeneous transform representing pose of Gripper relative to base
 
-T_0_3 = T_0_G  # pose of frame{3} relative to base link
-T_0_4 = T_0_G  # pose of frame{4} relative to base link
+symT_0_3 = symT_0_G  # pose of frame{3} relative to base link
+symT_0_4 = symT_0_G  # pose of frame{4} relative to base link
 i = 0  # index of rows of DH table
 for dh_row in zip(alpha_list, a_list, d_list, q_list):
-    T_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])
-    T_0_G = T_0_G * T_im1_i
+    sym_T_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
+    symT_0_G = symT_0_G * symT_im1_i
     if i == 2:
-        T_0_3 = T_0_G
+        symT_0_3 = symT_0_G
     elif i == 3:
-        T_0_4 = T_0_G
+        symT_0_4 = symT_0_G
     i += 1
 
 
