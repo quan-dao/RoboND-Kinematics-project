@@ -76,6 +76,11 @@ a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')  # links length
 d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')  # links offset
 q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8')  # joints variable
 
+alpha_list = [alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6]
+a_list = [a0, a1, a2, a3, a4, a5, a6]
+d_list = [d1, d2, d3, d4, d5, d6, d7]
+q_list = [q1, q2, q3, q4, q5, q6, q7]
+
 # Define dictianary storing the DH table
 s = {alpha0:    0,        a0:    0,         d1:    0.75,
      alpha1:    -pi/2,    a1:    0.35,      d2:    0,         q2:    q2 - pi/2,
@@ -93,7 +98,7 @@ symT_0_3 = Matrix([[1, 0, 0, 0],
 
 i = 0  # index of rows of DH table
 for dh_row in zip(alpha_list, a_list, d_list, q_list):
-    sym_T_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
+    symT_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
     symT_0_3 = symT_0_3 * symT_im1_i
     if i == 2:
         break;
@@ -178,19 +183,19 @@ def handle_calculate_IK(req):
             T_0_3 = symT_0_3.evalf(subs={q1: ik_q1, q2: ik_q2, q3: ik_q3})  # numerical value of pose of gripper
             # relative to base frame give value of the first 3 joints
             ori_3_G = (T_0_3[:-1, :-1]).T * ori_grip   # orientation of gripper relative to frame{3}
-            if abs(T_3_G[1, 2]) == 1:  # i.e. sin(q5) == 0
+            if abs(ori_3_G[1, 2]) == 1:  # i.e. sin(q5) == 0
                 # orientation of gripper frame only depend on q4 + q6
                 ik_q5 = 0
-                sum46 = atan(-T_3_G[0, 1], T_3_G[0, 0])
+                sum46 = atan(-ori_3_G[0, 1], ori_3_G[0, 0])
                 ik_q4 = 0.5 * sum46
                 ik_q6 = 0.5 * sum46
             else:
-                ik_q6 = atan2(-T_3_G[1, 1], T_3_G[1, 0])
-                ik_q4 = atan2(T_3_G[2, 2], -T_3_G[0, 2])
+                ik_q6 = atan2(-ori_3_G[1, 1], ori_3_G[1, 0])
+                ik_q4 = atan2(ori_3_G[2, 2], -ori_3_G[0, 2])
                 if sin(ik_q4) == 0:
-                    ik_q5 = atan2(-T_3_G[0, 2] / cos(ik_q4), T_3_G[1, 2])
+                    ik_q5 = atan2(-ori_3_G[0, 2] / cos(ik_q4), ori_3_G[1, 2])
                 else:
-                    ik_q5 = atan2(T_3_G[2, 2] / sin(ik_q4), T_3_G[1, 2])
+                    ik_q5 = atan2(ori_3_G[2, 2] / sin(ik_q4), ori_3_G[1, 2])
             ###
 
             # Populate response for the IK request
