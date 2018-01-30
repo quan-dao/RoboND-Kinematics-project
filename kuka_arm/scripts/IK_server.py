@@ -86,21 +86,17 @@ s = {alpha0:    0,        a0:    0,         d1:    0.75,
      alpha6:    0,        a6:    0,         d7:    0.303,     q7:   0}
 
 # Symbolically calculate homogeneous transformation matrix
-symT_0_G = Matrix([[1, 0, 0, 0],
+symT_0_3 = Matrix([[1, 0, 0, 0],
                 [0, 1, 0, 0],
                 [0, 0, 1, 0],
-                [0, 0, 0, 1]])  # initialize homogeneous transform representing pose of Gripper relative to base
+                [0, 0, 0, 1]])  # initialize homogeneous transform representing pose of frame{3} relative to base
 
-symT_0_3 = symT_0_G  # pose of frame{3} relative to base link
-symT_0_4 = symT_0_G  # pose of frame{4} relative to base link
 i = 0  # index of rows of DH table
 for dh_row in zip(alpha_list, a_list, d_list, q_list):
     sym_T_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
-    symT_0_G = symT_0_G * symT_im1_i
+    symT_0_3 = symT_0_3 * symT_im1_i
     if i == 2:
-        symT_0_3 = symT_0_G
-    elif i == 3:
-        symT_0_4 = symT_0_G
+        break;
     i += 1
 
 
@@ -148,17 +144,58 @@ def handle_calculate_IK(req):
                     req.poses[x].orientation.z, req.poses[x].orientation.w])
 
             ### Your IK code here
-	    # Compensate for rotation discrepancy between DH parameters and Gazebo
-	    #
-	    #
-	    # Calculate joint angles using Geometric IK method
-	    #
-	    #
+	    # Orientation of Gripper frame relative to base frame
+            ori_grip = rot_z(yaw) * rot_y(pitch) * rot_x(roll)  # orientation of Gripper by Euler angle
+            ori_grip = ori_grip * rot_y(pi/2) * rot_z(pi)  # make Gripper frame coincident with DH convention
+
+            # Position of the Wrist Center
+            wc_position = Matrix([[px], [py], [pz]]) - (0.303 + 0.0375) * ori_grip[:, -1]
+
+
+	    # IK decouple --> WC Position problem
+            ik_q1 = atan2(wc_position[1], wc_position[0])  # angle of joint 1
+
+            # the First equation of q2 and q3 is the Z coordinate of WC
+            alpha = wc_position[2] - 0.75  # assign the RHS of this equation to alpha
+            # find the RHS of the Second equation of q2 and q3 from X or Y coordinate of WC and assign it to beta
+            if sin(ik_q1) == 0:
+                beta = wc_position[0] / cos(ik_q1) - 0.35
+            else:
+                beta = wc_position[1] / sin(ik_q1) - 0.35
+	    # Complexize these 2 equation by  1st-eq + i * 2nd-eq
+            r1, gamma1 = polarize_complex_num(alpha, beta)
+            r, gamma = polarize_complex_num(-0.054, 1.5)  # coefficient of e^(i*(q2+q3))in the complexized equation
+
+            # Geometrically solve for q2 & q3
+            ik_q2 = gamma1 - acos((r1**2 + 1.25**2 - r**2) / (2 * r1 * 1.25))
+            ik_q3 = gamma1 + asin(1.25 * sin(gamma1 - ik_q2) / r) - (ik_q2 + gamma)
+            # Convert these angles to [-pi, pi]
+            ik_q2 = put_in_mp_pi(ik_q2)
+            ik_q3 = put_in_mp_pi(ik_q3)
+
+
+            # IK decouple --> Orient the gripper
+            T_0_3 = symT_0_3.evalf(subs={q1: ik_q1, q2: ik_q2, q3: ik_q3})  # numerical value of pose of gripper
+            # relative to base frame give value of the first 3 joints
+            ori_3_G = (T_0_3[:-1, :-1]).T * ori_grip   # orientation of gripper relative to frame{3}
+            if abs(T_3_G[1, 2]) == 1:  # i.e. sin(q5) == 0
+                # orientation of gripper frame only depend on q4 + q6
+                ik_q5 = 0
+                sum46 = atan(-T_3_G[0, 1], T_3_G[0, 0])
+                ik_q4 = 0.5 * sum46
+                ik_q6 = 0.5 * sum46
+            else:
+                ik_q6 = atan2(-T_3_G[1, 1], T_3_G[1, 0])
+                ik_q4 = atan2(T_3_G[2, 2], -T_3_G[0, 2])
+                if sin(ik_q4) == 0:
+                    ik_q5 = atan2(-T_3_G[0, 2] / cos(ik_q4), T_3_G[1, 2])
+                else:
+                    ik_q5 = atan2(T_3_G[2, 2] / sin(ik_q4), T_3_G[1, 2])
             ###
 
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
-	    joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
+	    joint_trajectory_point.positions = [ik_q1, ik_q2, ik_q3, ik_q4, ik_q5, ik_q6]
 	    joint_trajectory_list.append(joint_trajectory_point)
 
         rospy.loginfo("length of Joint Trajectory List: %s" % len(joint_trajectory_list))
