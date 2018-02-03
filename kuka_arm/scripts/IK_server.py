@@ -112,25 +112,6 @@ def handle_calculate_IK(req):
         print "No valid poses received"
         return -1
     else:
-
-        ### Your FK code here
-        # Create symbols
-	#
-	#
-	# Create Modified DH parameters
-	#
-	#
-	# Define Modified DH Transformation matrix
-	#
-	#
-	# Create individual transformation matrices
-	#
-	#
-	# Extract rotation matrices from the transformation matrices
-	#
-	#
-        ###
-
         # Initialize service response
         joint_trajectory_list = []
         for x in xrange(0, len(req.poses)):
@@ -154,7 +135,7 @@ def handle_calculate_IK(req):
             ori_grip = ori_grip * rot_y(pi/2) * rot_z(pi)  # make Gripper frame coincident with DH convention
 
             # Position of the Wrist Center
-            wc_position = Matrix([[px], [py], [pz]]) - (0.303 + 0.0375) * ori_grip[:, -1]
+            wc_position = Matrix([[px], [py], [pz]]) - (0.303 + 0.1) * ori_grip[:, -1]
 
 
 	    # IK decouple --> WC Position problem
