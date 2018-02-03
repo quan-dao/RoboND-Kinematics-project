@@ -89,7 +89,9 @@ Substitute the value of parameters of the DH table's first four rows into equati
 
 In the equation above <img src="https://latex.codecogs.com/gif.latex?\inline^{0}\widehat{Z}_G"/> is the global coordinate of the Z axis of the gripper frame. Comparing these two equations, the value of `q1` is
 
-<img src="https://latex.codecogs.com/gif.latex?q_1&space;=&space;atan2\({WC}_y,&space;{WC}_x)"border="1"/>
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_1&space;=&space;atan2\({WC}_y,&space;{WC}_x)"/>
+</td></tr></table>
 
 Once the first joint angle (`q1`) is found, it is then used to produce another equation of `q2` and `q3` from either `WCx` or `WCy`.
 
@@ -118,7 +120,9 @@ On the complex plane in Fig.3, the red, green, blue vector respectively represen
 
 The value of `q2` is
 
-<img src="https://latex.codecogs.com/gif.latex?q_2&space;=&space;\gamma_1&space;-&space;\angle&space;cyan"border="1"/>
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_2&space;=&space;\gamma_1&space;-&space;\angle&space;cyan"/>
+</td></tr></table>
 
 Using the law of sine in a triangle The angle between red and blue vector is
 
@@ -126,7 +130,52 @@ Using the law of sine in a triangle The angle between red and blue vector is
 
 The value of `q3` is
 
-<img src="https://latex.codecogs.com/gif.latex?q_3&space;=&space;\gamma_1&space;&plus;&space;\angle&space;(\widehat{red},\widehat{blue})-(q_2&plus;\gamma)"border="1"/>   
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_3&space;=&space;\gamma_1&space;&plus;&space;\angle&space;(\widehat{red},\widehat{blue})-(q_2&plus;\gamma)"/>
+</td></tr></table>
+</td></tr></table>
+
+### 2.2 Gripper orientation
+
+Using the angular position of the first three joints (`q1, q2, q3`) obtained in the previous subsection, the other three joint angles are now calculated so that the DH convention defined gripper frame achieves the orientation which is derived from the Euler angles of the URDF defined gripper frame measured by ROS' Pose message as in subsection 1.2.2.
+
+Because the value of `q1, q2, q3` have been already known, the global pose of frame `3` has been completely defined. This enable the calculation of `q4, q5, q6` through the orientation of the DH convention defined gripper frame relative to frame `3`. The reason frame `3` is chosen to define the orientation of gripper frame instead of frame `0` is that it requires less matrix multiplication (4 in case of frame `3` compared to 7 in case of frame `0`). The pose of the gripper frame relative to frame `3` symbolically calculated with DH parameters is
+
+<img src="https://latex.codecogs.com/gif.latex?_{G}^{3}\textrm{T}&space;=_{4}^{3}\textrm{T}\:&space;_{5}^{4}\textrm{T}\:&space;_{6}^{5}\textrm{T}\:&space;_{G}^{6}\textrm{T}" />
+
+This equation is expanded to
+
+<img src="https://latex.codecogs.com/gif.latex?_{G}^{3}\textrm{T}&space;=&space;\begin{bmatrix}&space;-s_4s_6&plus;c_4c_5c_6&space;&&space;-s_4c_6-s_6c_4c_5&space;&-s_5c_4&space;&-0.303s_5c_4-0.054&space;\\&space;s_5c_6&&space;-s_5s_6&space;&&space;c_5&space;&&space;0.303c_5&plus;1.5&space;\\&space;-s_4c_5c_6-s_6c_4&&space;s_4s_6c_5-c_4c_6&space;&&space;s_4s_5&space;&&space;0.303s_4s_5&space;\\&space;0&&space;0&&space;0&&space;1&space;\end{bmatrix}"/>
+
+Assign the first three lines and three rows of the matrix above to <img src="https://latex.codecogs.com/gif.latex?\inline_{G}^{3}\textrm{R}"/>. The numerical value of<img src="https://latex.codecogs.com/gif.latex?\inline_{G}^{3}\textrm{R}"/> is
+
+<img src="https://latex.codecogs.com/gif.latex?_{G}^{3}\textrm{R}&space;=&space;_{0}^{3}\textrm{R}\:&space;_{G}^{0}\textrm{R}&space;=&space;_{3}^{0}\textrm{R}^T\:&space;_{G}^{0}\textrm{R}"/>
+
+Note that the right hand side of this above is fully known. <img src="https://latex.codecogs.com/gif.latex?\inline_{3}^{0}\textrm{R}"/> is the global orientation of frame 3 which is computed given the value of `q1, q2, q3`, while <img src="https://latex.codecogs.com/gif.latex?\inline_{G}^{0}\textrm{R}"/> is the global orientation of gripper frame established by the Euler angle measured by ROS.
+
+Comparing the symbolic and numerical value of <img src="https://latex.codecogs.com/gif.latex?\inline_{G}^{3}\textrm{R}"/> yields the equation which is sufficient for finding `q4, q5, q6`. Before  performing any further calculation, let's consider the simple case where `q5 = 0`. In this case, the orientation of the gripper frame is   
+
+<img src="https://latex.codecogs.com/gif.latex?_{G}^{3}\textrm{R}&space;=&space;\begin{bmatrix}&space;\cos(q_4&plus;q_6)&space;&-\sin(q_4&plus;q_6)&space;&0&space;\\&space;0&space;&0&space;&1\\&space;-\sin(q_4&plus;q_6)&space;&-\cos(q_4&plus;q_6)&space;&0&space;\end{bmatrix}"/>     
+
+This equation shows that the orientation of gripper frame does not explicitly depend on `q4` or `q6` individually, but depends on their sum. Therefore, as long as their sum satisfies the following equation, `q4` and `q6` can have any value.
+
+<img src="https://latex.codecogs.com/gif.latex?q_4&plus;q_6&space;=&space;atan2(-_{G}^{3}\textrm{R}[0,1],&space;_{G}^{3}\textrm{R}[0,0])"/>
+
+Turning to the generic case where `sin(q_5)` has nonzero value, the value of `q6` and `q4` is
+
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_6&space;=&space;atan2(-_{G}^{3}\textrm{R}[1,1],&space;_{G}^{3}\textrm{R}[1,0])"/>
+</td></tr></table>
+
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_4&space;=&space;atan2(_{G}^{3}\textrm{R}[2,2],&space;-_{G}^{3}\textrm{R}[0,2])"/>
+</td></tr></table>
+
+The value of `q5` is defined based on the value of `q4`
+
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?q_5&space;=&space;\left\{\begin{matrix}&space;atan2(-_{G}^{3}\textrm{R}[0,2]/\cos(q_4),\:&space;_{G}^{3}\textrm{R}[1,2]),&space;if\:&space;\sin(q_4)&space;=&space;0\\&space;atan2(_{G}^{3}\textrm{R}[2,2]/\sin(q_4),\:&space;_{G}^{3}\textrm{R}[0,2]),\:&space;otherwise&space;\end{matrix}\right."/>
+</td></tr></table>
 
 ### Project Implementation
 
