@@ -177,13 +177,101 @@ The value of `q5` is defined based on the value of `q4`
 <img src="https://latex.codecogs.com/gif.latex?q_5&space;=&space;\left\{\begin{matrix}&space;atan2(-_{G}^{3}\textrm{R}[0,2]/\cos(q_4),\:&space;_{G}^{3}\textrm{R}[1,2]),&space;if\:&space;\sin(q_4)&space;=&space;0\\&space;atan2(_{G}^{3}\textrm{R}[2,2]/\sin(q_4),\:&space;_{G}^{3}\textrm{R}[0,2]),\:&space;otherwise&space;\end{matrix}\right."/>
 </td></tr></table>
 
-### Project Implementation
+## 3. Project Implementation
 
-#### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results.
+To implement those equation derived in two section above in the `IK_server.py`, I first define helper functions which construct the homogeneous transformation from the DH parameters
+```
+def homo_trans(alpha, a, d, theta):
+    T_im1_i = Matrix([[cos(theta),                             -sin(theta),              0,                  a],
+                      [sin(theta) * cos(alpha),    cos(theta) * cos(alpha),    -sin(alpha),    -sin(alpha) * d],
+                      [sin(theta) * sin(alpha),    cos(theta) * sin(alpha),     cos(alpha),     cos(alpha) * d],
+                      [0,                                                0,              0,                  1]])
+    return T_im1_i.subs(s)
+```
+and define the elementary rotation
+```
+def rot_x(roll):
+    mat_rot_x = Matrix([[1,         0,          0],
+                        [0, cos(roll), -sin(roll)],
+                        [0, sin(roll), cos(roll)]])
+    return mat_rot_x.evalf()
 
 
-Here I'll talk about the code, what techniques I used, what worked and why, where the implementation might fail and how I might improve it if I were going to pursue this project further.  
+def rot_y(pitch):
+    mat_rot_y = Matrix([[cos(pitch),     0,    sin(pitch)],
+                        [0,              1,             0],
+                        [-sin(pitch),    0,    cos(pitch)]])
+    return mat_rot_y.evalf()
 
 
-And just for fun, another example image:
-![alt text][image3]
+def rot_z(yaw):
+    mat_rot_z = Matrix([[cos(yaw),    -sin(yaw),    0],
+                        [sin(yaw),     cos(yaw),    0],
+                        [0,                   0,    1]])
+    return mat_rot_z.evalf()
+```
+
+Note that the `homo_trans()` returns a symbolic matrix, while the elementary rotation defining function return numerical matrix. Next, I define a function to transform complex number from Cartersian form to polar form for use in solving the WC Position problem.
+ ```
+ def polarize_complex_num(re, img):
+     moment = sqrt(re**2 + img**2)
+     arg = atan2(img, re)
+     return moment, arg
+ ```
+ The `polarize_complex_num()` takes in the real and imaginary part of a complex number and return its moment and argument.
+
+ The final helper function `put_in_mp_pi()` is to transform an angle of an arbitrary value to the range of `[-pi, pi]`.
+ ```
+ def put_in_mp_pi(angle):
+     # put the angle in the range [-pi, pi]
+     while abs(angle) >= (2 * pi):
+         if angle > 0:
+             angle -= 2 * pi
+         else:
+             angle += 2 * pi
+     if angle > pi:
+         angle -= 2 * pi
+     elif angle < -pi:
+         angle += 2 *  pi
+     return angle.evalf()
+ ```
+After these function, a number symbolic variables are defined using the `SymPy` library to represent the DH parameters.
+```
+alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7')  # joint twist angle
+a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')  # links length
+d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')  # links offset
+q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8')  # joints variable
+# Store these variables in lists for iteration
+alpha_list = [alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6]
+a_list = [a0, a1, a2, a3, a4, a5, a6]
+d_list = [d1, d2, d3, d4, d5, d6, d7]
+q_list = [q1, q2, q3, q4, q5, q6, q7]
+```
+The DH table is established as a dictionary below
+```
+s = {alpha0:    0,        a0:    0,         d1:    0.75,
+     alpha1:    -pi/2,    a1:    0.35,      d2:    0,         q2:    q2 - pi/2,
+     alpha2:    0,        a2:    1.25,      d3:    0,
+     alpha3:    -pi/2,    a3:    -0.054,    d4:    1.5,
+     alpha4:    pi/2,     a4:    0,         d5:    0,
+     alpha5:    -pi/2,    a5:    0,         d6:    0,
+     alpha6:    0,        a6:    0,         d7:    0.303,     q7:   0}
+```
+
+The following block of code is to compute the symbolic value of global pose of frame `3` (`T_0_3`)
+```
+# Symbolically calculate homogeneous transformation matrix
+symT_0_3 = Matrix([[1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]])  # initialize homogeneous transform representing pose of frame{3} relative to base
+
+i = 0  # index of rows of DH table
+for dh_row in zip(alpha_list, a_list, d_list, q_list):
+    symT_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
+    symT_0_3 = symT_0_3 * symT_im1_i
+    if i == 2:
+        break;
+    i += 1
+```
+This block finishes the definition and preparation for the `handle_calculate_IK()` function. The content of `handle_calculate_IK()` function is implemented in the same flow as the Inverse Kinematics analysis.
