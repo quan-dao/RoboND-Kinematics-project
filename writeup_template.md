@@ -6,6 +6,10 @@
 [image1]: ./misc_images/kr210_DH_convention.png
 [image2]: ./misc_images/kr210_urdf.PNG
 [image3]: ./misc_images/wc_position.PNG
+[image4]: ./misc_images/reach_target.PNG
+[image5]: ./misc_images/retreive_target.PNG
+[image6]: ./misc_images/reach_drop_off.PNG
+[image7]: ./misc_images/release_target.PNG
 
 ## 1. Forward Kinematic
 ### 1.1 Run the forward_kinematics demo and evaluate the kr210.urdf.xacro file to perform kinematic analysis of Kuka KR210 robot and derive its DH parameters.
@@ -199,99 +203,35 @@ The value of `q5` is defined based on the value of `q4`
 
 ## 3. Project Implementation
 
-To implement those equation derived in two section above in the `IK_server.py`, I first define helper functions which construct the homogeneous transformation from the DH parameters
-```
-def homo_trans(alpha, a, d, theta):
-    T_im1_i = Matrix([[cos(theta),                             -sin(theta),              0,                  a],
-                      [sin(theta) * cos(alpha),    cos(theta) * cos(alpha),    -sin(alpha),    -sin(alpha) * d],
-                      [sin(theta) * sin(alpha),    cos(theta) * sin(alpha),     cos(alpha),     cos(alpha) * d],
-                      [0,                                                0,              0,                  1]])
-    return T_im1_i.subs(s)
-```
-and define the elementary rotation
-```
-def rot_x(roll):
-    mat_rot_x = Matrix([[1,         0,          0],
-                        [0, cos(roll), -sin(roll)],
-                        [0, sin(roll), cos(roll)]])
-    return mat_rot_x.evalf()
+The node which is in charge of performing Inverse Kinematics analysis is implemented in the file `IK_server.py`. This file begins with the definition of the `ik_helper_obj()` this a class that has all the gemetry definition of the robot as well as the methods supporting the IK analysis.
 
+The attributes of the `ik_helper_obj` includes
+* 4 list of symbolic variables denoting 4 type of DH parameters
+* a dictionary storing the value of the already known DH parameters
+* a list for symbolic variables representing the Euler angles of the gripper frame
+Beside, this class has a method for constructing homogeneous transformation based 4 elements of a row of DH table (`homo_trans()`) and 3 methods respectively performing 3 element rotations (around x, y, and z axis). Finally, `ik_helper_obj` has two methods that support the angle calculation, namely `polarize_complex_num()` and `put_in_mp_pi()`. While the former transform a Cartesian complex number to polar form, the latter convert an arbitrari value of a angle to the range of [-pi, pi].
 
-def rot_y(pitch):
-    mat_rot_y = Matrix([[cos(pitch),     0,    sin(pitch)],
-                        [0,              1,             0],
-                        [-sin(pitch),    0,    cos(pitch)]])
-    return mat_rot_y.evalf()
+The process of deriving the position of 6 robot joints in the `handle_calculate_IK()` function is in the same flow as the Inverse Kinematic analysis section. Given the value of gripper frame position and its euler angles,
+* 1st) calculate the gripper frame global orientation by multiplying the rotation matrix associated with each euler angle and perform the 2 body rotations to compensate for difference between URDF and DH convetion.
+* 2nd) calculate the postion of the Wirst Center (WC) by substract the offset between the WC and the origin of the gripper frame.
+* 3rd) find the position `ik_q1` of the first joint
+* 4th) establish the complex form of the two equation of `q2` and `q3`, based on the `x` (or `y`) and `z` coordinate of the WC.
+* 5th) solve these two equation for their values (`ik_q2` and `ik_q3`)
+* 6th) calculate the orientation of the gripper frame relative to frame 3.
+* 7th) derive the position of the last three joints through the orientation of the 6th step.
 
+In the main function of `IK_server.py`, an instance of the `ik_helper_obj` is initialize (and named `ik_obj`). Then the symbollic form the homogeneous transformation from base frame to frame 3 (`symT_0_3`) and the global orientation of the gripper frame (`symR_0_G`) are derived to prepare the IK calculation in `handle_calculate_IK()` mentioned above. After this, the function `IK_server()` is invoked to put the node `IK_server` online.
 
-def rot_z(yaw):
-    mat_rot_z = Matrix([[cos(yaw),    -sin(yaw),    0],
-                        [sin(yaw),     cos(yaw),    0],
-                        [0,                   0,    1]])
-    return mat_rot_z.evalf()
-```
+Thanks to the good function of this node, robot has successfully performed the pick and place task. The footage of this task is shown in the figures below.
 
-Note that the `homo_trans()` returns a symbolic matrix, while the elementary rotation defining function return numerical matrix. Next, I define a function to transform complex number from Cartersian form to polar form for use in solving the WC Position problem.
- ```
- def polarize_complex_num(re, img):
-     moment = sqrt(re**2 + img**2)
-     arg = atan2(img, re)
-     return moment, arg
- ```
- The `polarize_complex_num()` takes in the real and imaginary part of a complex number and return its moment and argument.
+![alt text][image4]
+*Fig.4 Robot reaches the target*
 
- The final helper function `put_in_mp_pi()` is to transform an angle of an arbitrary value to the range of `[-pi, pi]`.
- ```
- def put_in_mp_pi(angle):
-     # put the angle in the range [-pi, pi]
-     while abs(angle) >= (2 * pi):
-         if angle > 0:
-             angle -= 2 * pi
-         else:
-             angle += 2 * pi
-     if angle > pi:
-         angle -= 2 * pi
-     elif angle < -pi:
-         angle += 2 *  pi
-     return angle.evalf()
- ```
-After these function, a number symbolic variables are defined using the `SymPy` library to represent the DH parameters.
-```
-alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7')  # joint twist angle
-a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')  # links length
-d1, d2, d3, d4, d5, d6, d7 = symbols('d1:8')  # links offset
-q1, q2, q3, q4, q5, q6, q7 = symbols('q1:8')  # joints variable
-# Store these variables in lists for iteration
-alpha_list = [alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6]
-a_list = [a0, a1, a2, a3, a4, a5, a6]
-d_list = [d1, d2, d3, d4, d5, d6, d7]
-q_list = [q1, q2, q3, q4, q5, q6, q7]
-```
-The DH table is established as a dictionary below
-```
-s = {alpha0:    0,        a0:    0,         d1:    0.75,
-     alpha1:    -pi/2,    a1:    0.35,      d2:    0,         q2:    q2 - pi/2,
-     alpha2:    0,        a2:    1.25,      d3:    0,
-     alpha3:    -pi/2,    a3:    -0.054,    d4:    1.5,
-     alpha4:    pi/2,     a4:    0,         d5:    0,
-     alpha5:    -pi/2,    a5:    0,         d6:    0,
-     alpha6:    0,        a6:    0,         d7:    0.303,     q7:   0}
-```
+![alt text][image5]
+*Fig.5 Robot retreive the target*
 
-The following block of code is to compute the symbolic value of global pose of frame `3` (`T_0_3`)
-```
-# Symbolically calculate homogeneous transformation matrix
-symT_0_3 = Matrix([[1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1]])  # initialize homogeneous transform representing pose of frame{3} relative to base
+![alt text][image6]
+*Fig.6 Robot reach the drop off position*
 
-i = 0  # index of rows of DH table
-for dh_row in zip(alpha_list, a_list, d_list, q_list):
-    symT_im1_i = homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])  # a symbolic matrix because of q_list
-    symT_0_3 = symT_0_3 * symT_im1_i
-    if i == 2:
-        break;
-    i += 1
-```
-This block finishes the definition and preparation for the `handle_calculate_IK()` function. The content of `handle_calculate_IK()` function is implemented in the same flow as the Inverse Kinematics analysis.
+![alt text][image7]
+*Fig.7 Robot release the target* 
