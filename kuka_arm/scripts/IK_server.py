@@ -27,13 +27,13 @@ class ik_helper_obj():
         self.d_list = symbols('d1:8')  # links offset
         self.q_list = symbols('q1:8')  # joints variable
         # define the DH table
-        self.dh_table = {alpha0:    0,        a0:    0,         d1:    0.75,
-                         alpha1:    -pi/2,    a1:    0.35,      d2:    0,         q2:    q2 - pi/2,
-                         alpha2:    0,        a2:    1.25,      d3:    0,
-                         alpha3:    -pi/2,    a3:    -0.054,    d4:    1.5,
-                         alpha4:    pi/2,     a4:    0,         d5:    0,
-                         alpha5:    -pi/2,    a5:    0,         d6:    0,
-                         alpha6:    0,        a6:    0,         d7:    0.303,     q7:   0}
+        self.dh_table = {self.alpha_list[0]:    0,        self.a_list[0]:    0,         self.d_list[0]:    0.75,
+                         self.alpha_list[1]:    -pi/2,    self.a_list[1]:    0.35,      self.d_list[1]:    0,         self.q_list[1]:    self.q_list[1] - pi/2,
+                         self.alpha_list[2]:    0,        self.a_list[2]:    1.25,      self.d_list[2]:    0,
+                         self.alpha_list[3]:    -pi/2,    self.a_list[3]:    -0.054,    self.d_list[3]:    1.5,
+                         self.alpha_list[4]:    pi/2,     self.a_list[4]:    0,         self.d_list[4]:    0,
+                         self.alpha_list[5]:    -pi/2,    self.a_list[5]:    0,         self.d_list[5]:    0,
+                         self.alpha_list[6]:    0,        self.a_list[6]:    0,         self.d_list[6]:    0.303,     self.q_list[6]:   0}
         self.euler_rpy = symbols('rpy0:3')  # gripper frame euler angles
 
 
@@ -190,4 +190,5 @@ if __name__ == "__main__":
         symT_0_3 = symT_0_3 * T_im1_i
     # Symboliccaly calculate global pose of gripper frame
     symR_0_G = ik_obj.rot_z(ik_obj.euler_rpy[2]) * ik_obj.rot_y(ik_obj.euler_rpy[1]) * ik_obj.rot_x(ik_obj.euler_rpy[0]) * ik_obj.rot_y(pi/2) * ik_obj.rot_z(pi)
+    
     IK_server()
