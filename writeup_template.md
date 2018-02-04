@@ -46,28 +46,48 @@ It is important to stress that row `i` of the DH table represents the pose of fr
 #### 1.2.1 Global pose of frame `i`
 The transformation based on DH parameters which transforms frame `i - 1`to frame `i` is
 
-<img src="https://latex.codecogs.com/gif.latex?_{i}^{i-1}\textrm{T}&space;=&space;R_X(\alpha_{i-1})D_X(a_{i-1})R_Z(\theta_i)D_Z(d_i)"/>
+<img src="https://latex.codecogs.com/gif.latex?_{i}^{i-1}\textrm{T}&space;=&space;Rot_X(\alpha_{i-1})D_X(a_{i-1})Rot_Z(\theta_i)D_Z(d_i)"/>
 
 Expanding the equation above yields the homogeneous transformation representing the pose of frame `i` relative to frame `i - 1`
 
 <img src="https://latex.codecogs.com/gif.latex?_{i}^{i-1}\textrm{T}&space;=&space;\begin{bmatrix}&space;c\theta_i&space;&-s\theta_i&space;&0&space;&a_{i-1}&space;\\&space;s\theta_ic\alpha_{i-1}&space;&c\theta_ic\alpha_{i-1}&space;&-s\alpha_{i-1}&space;&-s\alpha_{i-1}d_i&space;\\&space;s\theta_is\alpha_{i-1}&space;&c\theta_is\alpha_{i-1}&space;&c\alpha_{i-1}&space;&c\alpha_{i-1}d_i&space;\\&space;0&space;&0&space;&0&space;&1&space;\end{bmatrix}"/>
+
+Respectively substituting each row of DH table to the equation above results in the individual homogeneous transformation matrix as following.
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;\begin{matrix}&space;_{1}^{0}\textrm{T}&space;=&space;\begin{bmatrix}&space;\cos(q_1)&space;&&space;-\sin(q_1)&space;&&space;0&space;&&space;0&space;\\&space;\sin(q_1)&space;&&space;\cos(q_1)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;0.75&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;&&space;_{2}^{1}\textrm{T}&space;=&space;\begin{bmatrix}&space;\sin(q_2)&space;&&space;\cos(q_2)&space;&&space;0&space;&&space;0.35&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;0&space;\\&space;\cos(q_2)&space;&&space;-\sin(q_2)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;\end{matrix}"/>
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;\begin{matrix}&space;_{3}^{2}\textrm{T}&space;=&space;\begin{bmatrix}&space;\cos(q_3)&space;&&space;-\sin(q_3)&space;&&space;0&space;&&space;1.25&space;\\&space;\sin(q_3)&space;&&space;\cos(q_3)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;&&space;_{4}^{3}\textrm{T}&space;=&space;\begin{bmatrix}&space;\cos(q_4)&space;&&space;-\sin(q_4)&space;&&space;0&space;&&space;-0.054&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;1.5&space;\\&space;-\sin(q_4)&space;&&space;-\cos(q_4)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;\end{matrix}"/>
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;\begin{matrix}&space;_{5}^{4}\textrm{T}&space;=&space;\begin{bmatrix}&space;\cos(q_5)&space;&&space;-\sin(q_5)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;-1&space;&&space;0&space;\\&space;\sin(q_5)&space;&&space;\cos(q_5)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;&&space;_{6}^{5}\textrm{T}&space;=&space;\begin{bmatrix}&space;\cos(q_6)&space;&&space;-\sin(q_6)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;0&space;\\&space;-\sin(q_6)&space;&&space;-\cos(q_6)&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1&space;\end{bmatrix}&space;\end{matrix}"/>
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;_{G}^{6}\textrm{T}&space;=&space;\begin{bmatrix}&space;1&space;&&space;0&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;1&space;&&space;0&space;&&space;0&space;\\&space;0&space;&&space;0&space;&&space;1&space;&&space;0.303&space;\\&space;0&space;&&space;0&space;&&space;0&space;&&space;1\end{bmatrix}"/>
 
 Frame `i` is obtained by consecutively perform `body` transform on frame 0 until it is coincident with frame `i`. Therefore, the global pose of frame `i` is
 
 <img src="https://latex.codecogs.com/gif.latex?_{G}^{0}\textrm{T}&space;=&space;_{1}^{0}\textrm{T}\:_{2}^{1}\textrm{T}\:&space;\cdots\:&space;_{6}^{5}\textrm{T}\:_{G}^{6}\textrm{T}"/>   
 
 #### 1.2.2 Global orientation of the gripper frame
-The Euler angles (the ordered set: {roll, pitch, yaw}) obtained from ROS' Pose message represents the orientation of the gripper frame defined by the URDF file (the small green frame in Fig.2). Given that the convention of the Euler angles (used in ROS) being is `fixed X-Y-Z`, the pose of URDF defined gripper frame is
+The Euler angles (the ordered set: {roll, pitch, yaw}) obtained from ROS' Pose message represents the orientation of the gripper frame defined by the URDF file (the small green frame in Fig.2). Given that the convention of the Euler angles (used in ROS) being is `fixed X-Y-Z`, the orientation of URDF defined gripper frame is
 
-<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{ORI}_{G(urdf)}&space;=&space;Rot_Z(yaw)\:&space;Rot_Y(pitch)\:&space;Rot_X(roll)"/>
+<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{R}_{G(urdf)}&space;=&space;Rot_Z(yaw)\:&space;Rot_Y(pitch)\:&space;Rot_X(roll)"/>
 
-For the orientation of the gripper frame to be useful for solving Inverse Kinematic problem, the URDF defined gripper frame needs to be transformed to the gripper frame which is defined by the DH convention (the yellow frame in Fig.2). This transformation is composed by a body rotation of `-pi/2` around y axis followed by another body rotation of `pi` around z axis. Therefore, the orientation of the DH convention defined gripper frame is
+For the orientation of the gripper frame to be useful in solving Inverse Kinematic problem, the URDF defined gripper frame needs to be transformed to the gripper frame which is defined by the DH convention (the yellow frame in Fig.2). This transformation is composed by a `body` rotation of `-pi/2` around y axis followed by another body rotation of `pi` around z axis. Therefore, the orientation of the DH convention defined gripper frame is
 
-<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{ORI}_{G}&space;=&space;^{0}\textrm{ORI}_{G(urdf)}\:&space;Rot_Y(-\pi/2)\:&space;Rot_Z(\pi)"/>
+<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{R}_{G}&space;=&space;^{0}\textrm{R}_{G(urdf)}\:&space;Rot_Y(-\pi/2)\:&space;Rot_Z(\pi)"/>
 
 Substitute the oriention of the URDF defined gripper frame into the equation above
 
-<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{ORI}_{G}&space;=&space;Rot_Z(yaw)\:&space;Rot_Y(pitch)\:&space;Rot_X(roll)\:&space;Rot_Y(-\pi/2)\:&space;Rot_Z(\pi)"/>  
+<table><tr><td>
+<img src="https://latex.codecogs.com/gif.latex?^{0}\textrm{R}_{G}&space;=&space;Rot_Z(yaw)\:&space;Rot_Y(pitch)\:&space;Rot_X(roll)\:&space;Rot_Y(-\pi/2)\:&space;Rot_Z(\pi)"/>
+</td></tr></table>
+
+This equation is expanded into
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;_{G}^{0}\textrm{R}&space;=&space;\begin{bmatrix}&space;\sin(p)\cos(r)\cos(y)&plus;\sin(r)\sin(y)&space;&&space;-\sin(p)\sin(r)\cos(y)&plus;\sin(y)\cos(r)&space;&&space;\cos(p)\cos(y)&space;\\&space;\sin(p)\sin(y)\cos(r)-\sin(r)\cos(y)&space;&&space;-\sin(p)\sin(r)\sin(y)-\cos(r)\cos(y)&space;&&space;\sin(y)\cos(p)&space;\\&space;\cos(p)\cos(r)&space;&&space;-\sin(r)\cos(p)&space;&-\sin(p)&space;\end{bmatrix}"/>
+
+Combine this representation of gripper frame's global orientation with its global position `[px;py;pz]` to get the gripper frame's global pose
+
+<img src="https://latex.codecogs.com/gif.latex?\inline&space;_{G}^{0}\textrm{T}&space;=&space;\begin{bmatrix}&space;_{G}^{0}\textrm{R}&space;&&space;\begin{matrix}&space;p_x\\&space;p_y\\&space;p_z&space;\end{matrix}&space;\\&space;\begin{matrix}&space;0&space;&0&space;&0&space;\end{matrix}&space;&1&space;\end{bmatrix}"/>
 
 ## 2. Inverse Kinematic
 ### 2.1 Wrist Center Position
