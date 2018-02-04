@@ -51,31 +51,31 @@ class ik_helper_obj():
         mat_rot_x = Matrix([[1,         0,          0],
                             [0, cos(roll), -sin(roll)],
                             [0, sin(roll), cos(roll)]])
-        return mat_rot_x.evalf()
+        return mat_rot_x
 
 
     def rot_y(self, pitch):
         mat_rot_y = Matrix([[cos(pitch),     0,    sin(pitch)],
                             [0,              1,             0],
                             [-sin(pitch),    0,    cos(pitch)]])
-        return mat_rot_y.evalf()
+        return mat_rot_y
 
 
     def rot_z(self, yaw):
         mat_rot_z = Matrix([[cos(yaw),    -sin(yaw),    0],
                             [sin(yaw),     cos(yaw),    0],
                             [0,                   0,    1]])
-        return mat_rot_z.evalf()
+        return mat_rot_z
 
 
     # Angle calculating helper function
-    def polarize_complex_num(re, img):
+    def polarize_complex_num(self, re, img):
         moment = sqrt(re**2 + img**2)
         arg = atan2(img, re)
         return moment, arg
 
 
-    def put_in_mp_pi(angle):
+    def put_in_mp_pi(self, angle):
         # put the angle in the range [-pi, pi]
         while abs(angle) >= (2 * pi):
             if angle > 0:
@@ -173,18 +173,6 @@ def handle_calculate_IK(req):
 
 
 def IK_server():
-    # initialize IK helper object
-    ik_obj = ik_helper_obj()
-    # Symboliccaly calculate global pose of frame 3
-    small_dh = zip(ik_obj.alpha_list, ik_obj.a_list, ik_obj.d_list, ik_obj.q_list, range(4))  # zip the first 3 rows of DH table
-    symT_0_3 = eye(4)  # initialize symT_0_3
-    for dh_row in small_dh:
-        T_im1_i = ik_obj.homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])
-        symT_0_3 = symT_0_3 * T_im1_i
-    # Symboliccaly calculate global pose of gripper frame
-    symR_0_G = ik_obj.rot_z(ik_obj.euler_rpy[2]) * ik_obj.rot_y(ik_obj.euler_rpy[1]) * ik_obj.rot_x(ik_obj.euler_rpy[0])\
-                * ik_obj.rot_y(pi/2) * ik_obj.rot_z(pi)
-
     # initialize node and declare calculate_ik service
     rospy.init_node('IK_server')
     s = rospy.Service('calculate_ik', CalculateIK, handle_calculate_IK)
@@ -192,4 +180,14 @@ def IK_server():
     rospy.spin()
 
 if __name__ == "__main__":
+    # initialize IK helper object
+    ik_obj = ik_helper_obj()
+    # Symboliccaly calculate global pose of frame 3
+    small_dh = zip(ik_obj.alpha_list, ik_obj.a_list, ik_obj.d_list, ik_obj.q_list, range(3))  # zip the first 3 rows of DH table
+    symT_0_3 = eye(4)  # initialize symT_0_3
+    for dh_row in small_dh:
+        T_im1_i = ik_obj.homo_trans(dh_row[0], dh_row[1], dh_row[2], dh_row[3])
+        symT_0_3 = symT_0_3 * T_im1_i
+    # Symboliccaly calculate global pose of gripper frame
+    symR_0_G = ik_obj.rot_z(ik_obj.euler_rpy[2]) * ik_obj.rot_y(ik_obj.euler_rpy[1]) * ik_obj.rot_x(ik_obj.euler_rpy[0]) * ik_obj.rot_y(pi/2) * ik_obj.rot_z(pi)
     IK_server()
